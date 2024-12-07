@@ -39,21 +39,29 @@ def process_encrypt_files(file_path):
             print(f"Skipping hidden/system file: {item}")
             continue
         
-        if os.path.isfile(full_item_path):
-            with open(full_item_path, 'rb') as read_file:
-                original = read_file.read()
+        try:
+            if os.path.isdir(full_item_path):
+                print(f"Entering directory: {item}")
+                process_encrypt_files(full_item_path)
                 
-            encrypted = encrypt(original)
+                new_name = os.path.join(file_path, fernet.encrypt(item.encode()).decode())
+                os.rename(old_name, new_name)
+                print(f"Renamed directory: {item} -> {new_name}")
             
-            with open(full_item_path, 'wb') as write_file:
-                write_file.write(encrypted)
+            elif os.path.isfile(full_item_path):
+                with open(full_item_path, 'rb') as read_file:
+                    original = read_file.read()
+                    
+                encrypted = encrypt(original)
                 
-            new_name = old_name + '.encrypted'
-            os.rename(old_name, new_name)   
-        elif os.path.isdir(full_item_path):
-            print(f"Found directory: {item}")
-            new_name = old_name + '.encrypted'
-            os.rename(old_name, new_name)
+                with open(full_item_path, 'wb') as write_file:
+                    write_file.write(encrypted)
+                    
+                new_name = os.path.join(file_path, fernet.encrypt(item.encode()).decode()) 
+                os.rename(old_name, new_name)
+                print(f"Encrypted and renamed file: {item} -> {new_name}")
+        except Exception as e:
+            print(f"Error processing {item}: {e}")    
                 
     print("All files were successfully encrypted.")   
     
@@ -64,17 +72,29 @@ def process_decrypt_files(file_path):
         if item.startswith('.'):
             print(f"Skipping hidden/system file: {item}")
             continue
-        
-        if os.path.isfile(full_item_path):
-            with open(full_item_path, 'rb') as read_file:
-                original = read_file.read()
-                
-            decrypted = decrypt(original)
             
-            with open(full_item_path, 'wb') as write_file:
-                write_file.write(decrypted)
+        try:
+            if os.path.isdir(full_item_path):
+                process_decrypt_files(full_item_path) 
                 
-    print("All files were successfully decrypted.")        
+                decrypted_name = os.path.join(file_path, decrypt(item))
+                os.rename(full_item_path, decrypted_name)
+                
+            elif os.path.isfile(full_item_path):
+                with open(full_item_path, 'rb') as read_file:
+                    encrypted_content = read_file.read()
+                decrypted_content = decrypt(encrypted_content)
+                
+                with open(full_item_path, 'wb') as write_file:
+                    write_file.write(decrypted_content)
+                
+                
+                decrypted_name = os.path.join(file_path, decrypt(item))
+                os.rename(full_item_path, decrypted_name)
+        except Exception as e:
+            print(f"Error processing {item}: {e}")
+            
+        print("All files were successfully decrypted.")  
         
         
 # def process(folder_path, action):
@@ -150,9 +170,16 @@ def process_decrypt_files(file_path):
 #                 break
 
 def main():
-    query = input("Enter the path: ")
+    ask = input("encryption or decryption (e/d): ")
     
-    process_decrypt_files(query)
-
+    if ask == 'e':
+        query = input("Enter the path: ")
+        process_encrypt_files(query)
+    elif ask == 'd':
+        query = input("Enter the path: ")
+        process_decrypt_files(query)
+    else:
+        print('Invalid input')
+    
 if __name__ == "__main__":
     main()
